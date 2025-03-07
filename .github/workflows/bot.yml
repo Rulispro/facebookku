@@ -71,3 +71,30 @@ jobs:
       - name: Run Marketplace Posting
         run: node scripts/marketplace.js
         continue-on-error: true
+
+        name: Jalankan Facebook Bot
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # Jalankan setiap hari jam 00.00 UTC (07.00 WIB)
+  workflow_dispatch:
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Jalankan Tasks dari tasks.json
+        run: node backend/run_tasks.js
+
