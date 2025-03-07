@@ -1,4 +1,4 @@
-// 🔹 Buka IndexedDB
+    // 🔹 Buka IndexedDB
 function openDB() {
     return new Promise((resolve, reject) => {
         let request = indexedDB.open("FacebookBotDB", 1);
@@ -160,10 +160,43 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Tambahkan event listener untuk tombol "Start"
-    document.getElementById("startButton").addEventListener("click", runSavedTasks);
+    document.getElementById("runTasksButton").addEventListener("click", runSavedTasks);
 });
 
-// 🔹 Simpan Task Harian (Otomatis)
+// 🔹 Function Start untuk Setiap Task
+function startAutoLike() {
+    saveTask("autolike").then(() => runSavedTasks());
+}
+
+function startAutoUnfriend() {
+    saveTask("autounfriend").then(() => runSavedTasks());
+}
+
+function startAutoAddFriend() {
+    saveTask("autoaddfriend").then(() => runSavedTasks());
+}
+
+function startAutoConfirm() {
+    saveTask("autoconfirm").then(() => runSavedTasks());
+}
+
+function startLinkPost() {
+    saveTask("autoaddfriend_link_post").then(() => runSavedTasks());
+}
+
+function startAutoPost() {
+    saveTask("autoposting_group").then(() => runSavedTasks());
+}
+
+function startScrapeGroups() {
+    saveTask("scrape_groups").then(() => runSavedTasks());
+}
+
+function startMarketplacePost() {
+    saveTask("autoposting_marketplace").then(() => runSavedTasks());
+}
+
+// 🔹 Simpan Task Default
 saveTask("autolike"); 
 saveTask("autoposting_group"); 
 saveTask("autoposting_marketplace"); 
