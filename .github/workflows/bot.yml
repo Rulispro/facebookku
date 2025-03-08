@@ -4,7 +4,23 @@ on:
   schedule:
     - cron: '0 4-23 * * *' # Menjalankan bot setiap jam 04:00 - 23:00 (untuk posting di jam terpilih)
     - cron: '0 0 * * *' # Menjalankan bot setiap tengah malam untuk fitur harian
-  workflow_dispatch: # Bisa dijalankan manual dari GitHub
+  workflow_dispatch:
+    inputs:
+      feature:
+        description: 'Pilih fitur untuk dijalankan'
+        required: true
+        default: 'startAutolike'
+        type: choice
+        options:
+          - startAutolike
+          - startAutoUnfriend
+          - startAutoAddFriend
+          - stopAutoConfirm
+          - startLinkPost
+          - startAutoPost
+          - startScrapeGroups
+          - startAutoJoin
+          - startMarketplacePost
 
 jobs:
   run-bot:
@@ -13,43 +29,20 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v18
+        with:
+          node-version: 18
+
       - name: Install Dependencies
-        run: |
-          npm install puppeteer fs
+        run: npm install puppeteer fs
 
-      # **🔹 Autolike Beranda (Maks 120 per hari)**
-      - name: Run Autolike
-        run: node scripts/autolike.js
-        continue-on-error: true
+      - name: Jalankan Tasks dari tasks.json
+        run: node backend/run_tasks.js
 
-      # **🔹 Autounfriend (Maks 50 per hari)**
-      - name: Run Autounfriend
-        run: node scripts/autounfriend.js
-        continue-on-error: true
-
-      # **🔹 Autoaddfriend (Maks 50 per hari)**
-      - name: Run Autoaddfriend
-        run: node scripts/autoaddfriend.js
-        continue-on-error: true
-
-      # **🔹 Autoconfirm (Maks 50 per hari)**
-      - name: Run Autoconfirm
-        run: node scripts/autoconfirm.js
-        continue-on-error: true
-
-      # **🔹 Autoaddfriend dari Postingan (Maks 50 per hari)**
-      - name: Run Autoaddfriend Link Post
-        run: node scripts/autoaddfriend_linkpost.js
-        continue-on-error: true
-
-      # **🔹 Scrape Nama Grup Facebook (Maks 100 per hari)**
-      - name: Run Scrape Groups
-        run: node scripts/scrape_groups.js
-        continue-on-error: true
-
-      # **🔹 Autojoin Grup dari Excel (Maks 100 per hari)**
-      - name: Run Autojoin
-        run: node scripts/autojoin.js
+      - name: Jalankan Fitur yang Dipilih (Jika Manual)
+        if: github.event_name == 'workflow_dispatch'
+        run: node backend/${{ github.event.inputs.feature }}.js
         continue-on-error: true
 
   autoposting:
@@ -58,43 +51,20 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Dependencies
-        run: |
-          npm install puppeteer fs
-
-      # **🔹 Autoposting Grup (Jam Sesuai Checkbox)**
-      - name: Run Autoposting Group
-        run: node scripts/autopostgroup.js
-        continue-on-error: true
-
-      # **🔹 Facebook Marketplace Posting (Jam Sesuai Checkbox)**
-      - name: Run Marketplace Posting
-        run: node scripts/marketplace.js
-        continue-on-error: true
-
-        name: Jalankan Facebook Bot
-
-on:
-  schedule:
-    - cron: "0 0 * * *" # Jalankan setiap hari jam 00.00 UTC (07.00 WIB)
-  workflow_dispatch:
-
-jobs:
-  run-bot:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v18
         with:
           node-version: 18
 
       - name: Install Dependencies
-        run: npm install
+        run: npm install puppeteer fs
 
-      - name: Jalankan Tasks dari tasks.json
-        run: node backend/run_tasks.js
+      # **🔹 Autoposting Grup (Jam Sesuai Checkbox)**
+      - name: Run Autoposting Group
+        run: node backend/autopostgroup.js
+        continue-on-error: true
 
+      # **🔹 Facebook Marketplace Posting (Jam Sesuai Checkbox)**
+      - name: Run Marketplace Posting
+        run: node backend/marketplace.js
+        continue-on-error: true
