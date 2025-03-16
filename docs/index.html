@@ -75,7 +75,7 @@
         <script>
             for (let i = 4; i <= 24; i++) {
                 let hour = i < 10 ? `0${i}:00` : `${i}:00`;
-                document.write(`<input type="checkbox" value="${hour}"> ${hour} `);
+                document.write(`<input type="checkbox" name="postingHours" value="${hour}"> ${hour} `);
                 if (i % 6 === 0) document.write("<br>");
             }
         </script>
@@ -83,7 +83,9 @@
 
     <button onclick="startAutoPost()">Start</button>
     <button onclick="stopAutoPost()">Stop</button>
+    <button onclick="saveSelectedHours()">Simpan Jam Posting</button>
 
+    
     <h3>Scrape Nama Grup</h3>
     <input type="text" id="scrapeGroupName" placeholder="Masukkan nama grup">
     <input type="text" id="Excel" placeholder="Masukkan link Excel">
@@ -107,18 +109,17 @@
         <script>
             for (let i = 4; i <= 24; i++) {
                 let hour = i < 10 ? `0${i}:00` : `${i}:00`;
-                document.write(`<input type="checkbox" value="${hour}"> ${hour} `);
+                document.write(`<input type="checkbox" name="postingHours" value="${hour}"> ${hour} `);
                 if (i % 6 === 0) document.write("<br>");
             }
         </script>
     </div>
 
-    <button onclick="saveToIndexedDB()">Ambil Gambar</button>
-    <button onclick="startMarketplacePost()">Start</button>
+    <button onclick="saveToIndexedDB()">simpan Gambar</button>
+    <button onclick="startMarketplacePost()">Start</button
+    <button onclick="saveSelectedHours()">Simpan Jam Posting</button>
+    <button onclick="saveMarketplacePhoto()">Ambil Gambar</button>
 
-    <h3>Export & Jalankan Task</h3>
-    <button id="exportTasksButton">Export Task ke JSON</button>
-    <button id="runTasksButton">Jalankan Task dari JSON</button>
 
     <script>
         // Tambah input grup baru otomatis
@@ -131,15 +132,6 @@
             container.appendChild(input);
         }
 
-        document.getElementById("exportTasksButton").addEventListener("click", function () {
-            console.log("Export Task ke JSON...");
-            // Tambahkan logika ekspor task di sini
-        });
-
-        document.getElementById("runTasksButton").addEventListener("click", function () {
-            console.log("Jalankan Task dari JSON...");
-            // Tambahkan logika menjalankan task dari JSON di sini
-        });
     </script>
 
     <script src="script.js"></script>
