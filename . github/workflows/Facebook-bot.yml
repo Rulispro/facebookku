@@ -2,8 +2,8 @@ name: Facebook Bot Automation
 
 on:
   schedule:
-    - cron: '0 4-23 * * *' # Menjalankan bot setiap jam 04:00 - 23:00
-    - cron: '0 0 * * *'    # Menjalankan bot setiap tengah malam untuk fitur harian
+    - cron: '0 4-23 * * *'  # Menjalankan bot setiap jam 04:00 - 23:00 (Post Group/Marketplace)
+    - cron: '0 0 * * *'     # Menjalankan bot setiap tengah malam untuk fitur harian
   workflow_dispatch:
     inputs:
       feature:
@@ -22,6 +22,13 @@ on:
           - scrapeMemberGroups
           - startAutoJoin
           - startMarketplacePost
+      task:
+        description: 'Pilih task tambahan (opsional)'
+        required: false
+        type: choice
+        options:
+          - scrape-group
+          - scrape-member
 
 jobs:
   bot-automation:
@@ -61,12 +68,29 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         run: node backend/${{ github.event.inputs.feature }}.js
         continue-on-error: true
-     - name: Jalankan Tasks dari tasks.json
-        run: node backend/run_tasks.js
 
-      - name: Run Scrape Group
+      # ---- 🔁 Jalankan Tasks Tambahan (tasks.json) ----
+      - name: 🔁 Jalankan Tasks dari tasks.json
+        run: node backend/run_tasks.js
+        continue-on-error: true
+
+      # ---- 📥 Scrape Groups Manual ----
+      - name: 🧹 Run Scrape Group
         if: ${{ github.event.inputs.task == 'scrape-group' }}
         run: node backend/scrape_groups.js
-     - name: Run Scrape Member
+        continue-on-error: true
+
+      # ---- 👥 Scrape Members Manual ----
+      - name: 👥 Run Scrape Member
         if: ${{ github.event.inputs.task == 'scrape-member' }}
         run: node backend/scrape_members.js
+        continue-on-error: true
+
+      # ---- 🔄 Run Full Bot Manual & Harian ----
+      - name: 🚀 Run Facebook Bot (Puppeteer Full Task)
+        if: github.event.schedule == '0 0 * * *' || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          node backend/bot.js
