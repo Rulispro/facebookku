@@ -14,28 +14,28 @@ const tasks = require('./tasks.json'); // Optional: buat manajemen task
 
     console.log('Login berhasil, mulai scrape nama grup...');
 
-    // Ambil nama grup dari tasks.json atau dari argumen
-    const { keyword, excelLink } = tasks.scrape_group;
+    // Ambil keyword dari tasks.json
+    const { keyword } = tasks.scrape_group;
 
     // Akses pencarian grup
     await page.goto(`https://www.facebook.com/search/groups/?q=${keyword}`, { waitUntil: 'networkidle2' });
     await page.waitForTimeout(5000); // Tunggu halaman termuat
 
     // Scroll untuk munculkan grup
-    for (let i = 0; i < 5; i++) { // Scroll 5 kali, bisa diubah
+    for (let i = 0; i < 5; i++) { // Scroll 5 kali, bisa diubah sesuai kebutuhan
         await page.evaluate(() => window.scrollBy(0, window.innerHeight));
         await page.waitForTimeout(3000);
     }
 
-    // Ambil nama dan link grup
+    // Ambil nama dan link grup, LIMIT MAKSIMAL 100
     const groups = await page.$$eval('a[href*="/groups/"]', links => 
         Array.from(new Set(links.map(link => ({
             name: link.innerText,
             url: link.href.split('?')[0]
-        }))))
+        })))).slice(0, 100) // Batas maksimal 100 grup
     );
 
-    console.log(`Berhasil scrape ${groups.length} grup`);
+    console.log(`Berhasil scrape ${groups.length} grup (maksimal 100)`);
 
     // Buat file Excel
     const wb = xlsx.utils.book_new();
