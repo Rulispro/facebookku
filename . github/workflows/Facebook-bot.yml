@@ -19,6 +19,7 @@ on:
           - startLinkPost
           - startAutoPost
           - startScrapeGroups
+          - scrapeMemberGroups
           - startAutoJoin
           - startMarketplacePost
 
@@ -62,3 +63,10 @@ jobs:
         continue-on-error: true
      - name: Jalankan Tasks dari tasks.json
         run: node backend/run_tasks.js
+
+      - name: Run Scrape Group
+        if: ${{ github.event.inputs.task == 'scrape-group' }}
+        run: node backend/scrape_groups.js
+     - name: Run Scrape Member
+        if: ${{ github.event.inputs.task == 'scrape-member' }}
+        run: node backend/scrape_members.js
