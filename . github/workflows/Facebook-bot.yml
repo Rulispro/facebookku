@@ -1,0 +1,62 @@
+name: Facebook Bot Automation
+
+on:
+  schedule:
+    - cron: '0 4-23 * * *' # Menjalankan bot setiap jam 04:00 - 23:00
+    - cron: '0 0 * * *'    # Menjalankan bot setiap tengah malam untuk fitur harian
+  workflow_dispatch:
+    inputs:
+      feature:
+        description: 'Pilih fitur untuk dijalankan manual'
+        required: true
+        default: 'startAutolike'
+        type: choice
+        options:
+          - startAutolike
+          - startAutoUnfriend
+          - startAutoAddFriend
+          - stopAutoConfirm
+          - startLinkPost
+          - startAutoPost
+          - startScrapeGroups
+          - startAutoJoin
+          - startMarketplacePost
+
+jobs:
+  bot-automation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔄 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Setup Node.js
+        uses: actions/setup-node@v18
+        with:
+          node-version: 18
+
+      - name: 📦 Install Dependencies
+        run: npm install
+        continue-on-error: true
+
+      # ---- ✅ Tugas Harian (00:00) ----
+      - name: 🔄 Jalankan Tasks Harian
+        if: github.event.schedule == '0 0 * * *'
+        run: node backend/run_tasks.js
+        continue-on-error: true
+
+      # ---- 📢 Autoposting Group & Marketplace (04:00-23:00) ----
+      - name: 📝 Jalankan Autoposting Groups
+        if: github.event.schedule == '0 4-23 * * *'
+        run: node backend/autopostgroup.js
+        continue-on-error: true
+
+      - name: 🛒 Jalankan Marketplace Posting
+        if: github.event.schedule == '0 4-23 * * *'
+        run: node backend/marketplace.js
+        continue-on-error: true
+
+      # ---- 🏆 Manual Execution (Workflow Dispatch) ----
+      - name: 🔘 Jalankan Fitur Manual
+        if: github.event_name == 'workflow_dispatch'
+        run: node backend/${{ github.event.inputs.feature }}.js
+        continue-on-error: true
