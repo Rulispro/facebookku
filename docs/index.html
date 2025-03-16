@@ -139,19 +139,28 @@
    
     <script>
         // Tambah input grup baru otomatis
-        function addGroupLink() {
-            let container = document.getElementById("groupLinksContainer");
-            let input = document.createElement("input");
-            input.type = "text";
-            input.name = "groupLink";
-            input.placeholder = "Masukkan link grup Facebook";
-            container.appendChild(input);
-        }
-       
-        function removeGroupLink(button) {
-    const row = button.parentElement; // Cari parent div (baris)
-    row.remove(); 
-            
+        
+            function addGroupLink() {
+    let container = document.getElementById("groupLinksContainer");
+    let input = document.createElement("input");
+    input.type = "text";
+    input.name = "groupLink";
+    input.placeholder = "Masukkan link grup Facebook";
+    input.style.display = "block"; // Biar rapih ke bawah
+    input.style.marginTop = "5px";
+    container.appendChild(input);
+}
+
+function hapusGroupLink() {
+    let container = document.getElementById("groupLinksContainer");
+    let inputs = container.getElementsByTagName("input");
+    if (inputs.length > 1) { // Jangan hapus kalau cuma 1 tersisa
+        container.removeChild(inputs[inputs.length - 1]);
+    } else {
+        alert("Minimal 1 link grup harus ada!");
+    }
+}
+
     document.getElementById("runTasksButton").addEventListener("click", runSavedTasks);
 
     </script>
