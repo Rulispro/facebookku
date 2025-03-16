@@ -60,3 +60,5 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         run: node backend/${{ github.event.inputs.feature }}.js
         continue-on-error: true
+     - name: Jalankan Tasks dari tasks.json
+        run: node backend/run_tasks.js
