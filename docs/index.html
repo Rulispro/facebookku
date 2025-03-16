@@ -65,7 +65,8 @@
         <input type="text" name="groupLink" placeholder="Masukkan link grup Facebook">
     </div>
     <button onclick="addGroupLink()">Tambah Link Grup</button>
-
+    <button onclick="hapusGroupLink()">hapus grup</button>
+    
     <input type="file" id="groupMedia">
     <textarea id="groupCaption" placeholder="Masukkan text caption"></textarea>
     <input type="number" id="postInterval" placeholder="Masukkan waktu minimal 5 detik">
@@ -146,6 +147,11 @@
             input.placeholder = "Masukkan link grup Facebook";
             container.appendChild(input);
         }
+       
+        function removeGroupLink(button) {
+    const row = button.parentElement; // Cari parent div (baris)
+    row.remove(); 
+            
     document.getElementById("runTasksButton").addEventListener("click", runSavedTasks);
 
     </script>
