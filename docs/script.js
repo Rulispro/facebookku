@@ -1,210 +1,214 @@
-    // 🔹 Buka IndexedDB
-function openDB() {
-    return new Promise((resolve, reject) => {
-        let request = indexedDB.open("FacebookBotDB", 1);
+// ====== KONFIGURASI GITHUB ======
+const repo = 'username/repo'; // Ganti dengan repo kamu
+const token = 'ghp_xxx'; // Ganti dengan token GitHub kamu
 
-        request.onupgradeneeded = (event) => {
-            let db = event.target.result;
-            let stores = ["settings", "accounts", "groupPosts", "marketplacePhotos", "tasks"];
+// ====== FUNGSI INDEXEDDB ======
 
-            stores.forEach((store) => {
-                if (!db.objectStoreNames.contains(store)) {
-                    db.createObjectStore(store, {
-                        keyPath: "id",
-                        autoIncrement: store !== "settings",
-                    });
-                }
-            });
-        };
-
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
-}
-
-// 🔹 Simpan Jam Posting (Autopost Grup & Marketplace)
-async function saveSelectedHours() {
-    let db = await openDB();
-    let transaction = db.transaction("settings", "readwrite");
-    let store = transaction.objectStore("settings");
-
-    store.put({ id: "postingHours", hours: getCheckedHours("postingHours") });
-    store.put({ id: "marketplaceHours", hours: getCheckedHours("marketplacePostingHours") });
-
-    alert("Jam posting disimpan!");
-}
-
-// 🔹 Simpan Cookies Login
-async function saveCookies() {
-    const cookieInput = document.getElementById("cookieInput").value;
-    if (!cookieInput) return alert("Masukkan cookies terlebih dahulu!");
-
-    try {
-        let parsedCookies = JSON.parse(cookieInput);
-        let db = await openDB();
-        let transaction = db.transaction("accounts", "readwrite");
-        let store = transaction.objectStore("accounts");
-
-        store.add({ id: new Date().getTime(), cookies: parsedCookies });
-
-        alert("Cookies berhasil disimpan!");
-        loadAccounts();
-    } catch {
-        alert("Format cookies tidak valid!");
-    }
-}
-
-// 🔹 Muat Akun ke Dropdown
-async function loadAccounts() {
-    let db = await openDB();
-    let accounts = await db.transaction("accounts", "readonly").objectStore("accounts").getAll();
-
-    let dropdown = document.getElementById("accountDropdown");
-    dropdown.innerHTML = accounts.map((acc, i) => `<option value="${acc.id}">Akun ${i + 1}</option>`).join("");
-}
-
-// 🔹 Simpan Caption & Media Autopost Grup
-async function saveGroupPost() {
-    let caption = document.getElementById("groupCaption").value;
-    let fileInput = document.getElementById("groupMedia").files[0];
-
-    if (!caption && !fileInput) return alert("Masukkan caption atau pilih media!");
-
-    let db = await openDB();
-    let transaction = db.transaction("groupPosts", "readwrite");
-    let store = transaction.objectStore("groupPosts");
-
-    if (fileInput) {
-        let reader = new FileReader();
-        reader.onload = (event) => {
-            store.add({ id: new Date().getTime(), caption, media: event.target.result });
-            alert("Caption dan media berhasil disimpan!");
-        };
-        reader.readAsDataURL(fileInput);
-    } else {
-        store.add({ id: new Date().getTime(), caption, media: null });
-        alert("Caption berhasil disimpan tanpa media!");
-    }
-}
-
-// 🔹 Simpan Foto Marketplace
-async function saveMarketplacePhoto() {
-    let fileInput = document.getElementById("marketplacePhoto").files[0];
-    if (!fileInput) return alert("Pilih gambar terlebih dahulu!");
-
-    let reader = new FileReader();
-    reader.onload = async (event) => {
-        let db = await openDB();
-        db.transaction("marketplacePhotos", "readwrite")
-            .objectStore("marketplacePhotos")
-            .add({ id: new Date().getTime(), image: event.target.result });
-
-        alert("Gambar berhasil disimpan ke Marketplace!");
-    };
-    reader.readAsDataURL(fileInput);
-}
-
-// 🔹 Simpan Task ke IndexedDB
-async function saveTask(task) {
-    let db = await openDB();
-    let transaction = db.transaction("tasks", "readwrite");
-    let store = transaction.objectStore("tasks");
-
-    let allowedTasks = ["autolike", "autoposting_group", "autoposting_marketplace", "scrape_groups", "autojoin_group"];
-    let priorityTasks = ["autoaddfriend", "autounfriend", "autoconfirm", "autoaddfriend_link_post"];
-
-    // Hapus task yang bentrok jika task baru adalah prioritas
-    let existingTasks = await store.getAll();
-    existingTasks.forEach((t) => {
-        if (priorityTasks.includes(task) && priorityTasks.includes(t.task)) {
-            store.delete(t.id);
+// Buka Database
+async function openDB() {
+    return await idb.openDB('facebookBotDB', 1, {
+        upgrade(db) {
+            db.createObjectStore('tasks', { keyPath: 'id' });
+            db.createObjectStore('cookies', { keyPath: 'id' });
         }
     });
-
-    // Tambahkan task baru
-    store.add({ id: new Date().getTime(), task, timestamp: new Date().toISOString() });
-    console.log("✅ Task disimpan:", task);
 }
 
-// 🔹 Ambil Semua Task
+// ====== FUNGSI TASK ======
+
+// Tambahkan Task Baru
+async function saveTask(task) {
+    let db = await openDB();
+    let store = db.transaction('tasks', 'readwrite').objectStore('tasks');
+    let data = { id: new Date().getTime(), task, timestamp: new Date().toISOString() };
+    await store.add(data);
+    console.log("✅ Task disimpan:", task);
+    await updateTaskJSONToGitHub();
+}
+
+// Ambil Semua Task
 async function getTasks() {
     let db = await openDB();
-    let transaction = db.transaction("tasks", "readonly");
-    let store = transaction.objectStore("tasks");
+    let store = db.transaction("tasks", "readonly").objectStore("tasks");
     return await store.getAll();
 }
 
-// 🔹 Jalankan Semua Task yang Tersimpan
-async function runSavedTasks() {
-    let tasks = await getTasks();
-    if (tasks.length === 0) return alert("Tidak ada task yang disimpan!");
+// ====== FUNGSI COOKIES (LOGIN MULTI AKUN) ======
 
-    tasks.forEach((task) => {
-        console.log(`🚀 Menjalankan task: ${task.task}`);
-        // Di sini panggil Puppeteer untuk eksekusi sesuai task
-    });
-
-    alert("Semua task telah dijalankan!");
+// Simpan Cookies
+async function saveCookies(name, cookies) {
+    const db = await openDB();
+    const store = db.transaction('cookies', 'readwrite').objectStore('cookies');
+    await store.put({ id: name, cookies });
+    console.log("✅ Cookies tersimpan untuk:", name);
+    loadAccounts(); // Refresh dropdown akun
 }
 
-// 🔹 Dapatkan Jam Terpilih dari Checkbox
+// Ambil Semua Cookies
+async function getCookies() {
+    const db = await openDB();
+    const store = db.transaction('cookies', 'readonly').objectStore('cookies');
+    return await store.getAll();
+}
+
+// Load ke Dropdown Akun
+async function loadAccounts() {
+    const accounts = await getCookies();
+    const dropdown = document.getElementById('akunDropdown');
+    dropdown.innerHTML = ""; // Kosongkan dulu
+    accounts.forEach(acc => {
+        const option = document.createElement('option');
+        option.value = acc.id;
+        option.innerText = acc.id;
+        dropdown.appendChild(option);
+    });
+    console.log("✅ Akun dimuat:", accounts.map(a => a.id));
+}
+
+// Pilih Akun & Auto-login
+document.getElementById('akunDropdown').addEventListener('change', function () {
+    const akun = this.value;
+    alert(`Akun "${akun}" terpilih, bot akan login otomatis!`);
+    // Tambahkan trigger bot login pakai cookies disini
+});
+
+// ====== FUNGSI JAM CHECKBOX (GRUP & MARKETPLACE) ======
+
+// Ambil Jam yang Dicentang
 function getCheckedHours(id) {
     return Array.from(document.querySelectorAll(`#${id} input:checked`)).map((el) => el.value);
 }
 
-// 🔹 Event Listener saat Halaman Dimuat
-document.addEventListener("DOMContentLoaded", () => {
-    loadAccounts();
-    document.querySelectorAll("#postingHours input, #marketplacePostingHours input").forEach((input) => {
-        input.addEventListener("change", saveSelectedHours);
+// Simpan Jam Terpilih
+function saveSelectedHours() {
+    const postingHours = getCheckedHours('postingHours');
+    const marketplaceHours = getCheckedHours('marketplacePostingHours');
+    localStorage.setItem('postingHours', JSON.stringify(postingHours));
+    localStorage.setItem('marketplacePostingHours', JSON.stringify(marketplaceHours));
+    console.log('✅ Jam posting tersimpan:', postingHours, marketplaceHours);
+}
+
+// Load Jam Terpilih ke Checkbox
+function loadSelectedHours() {
+    const postingHours = JSON.parse(localStorage.getItem('postingHours')) || [];
+    const marketplaceHours = JSON.parse(localStorage.getItem('marketplacePostingHours')) || [];
+
+    document.querySelectorAll('#postingHours input').forEach((input) => {
+        input.checked = postingHours.includes(input.value);
+    });
+    document.querySelectorAll('#marketplacePostingHours input').forEach((input) => {
+        input.checked = marketplaceHours.includes(input.value);
     });
 
-    // Tambahkan event listener untuk tombol "Start"
-    document.getElementById("runTasksButton").addEventListener("click", runSavedTasks);
-});
-
-// 🔹 Function Start untuk Setiap Task
-function startAutoLike() {
-    saveTask("autolike").then(() => runSavedTasks());
+    console.log('✅ Jam posting dimuat:', postingHours, marketplaceHours);
 }
 
-function startAutoUnfriend() {
-    saveTask("autounfriend").then(() => runSavedTasks());
+// ====== FUNGSI UPLOAD KE GITHUB ======
+
+// Generate tasks.json
+async function generateTasksJSON() {
+    let tasks = await getTasks();
+    let formattedTasks = tasks.map(t => ({ type: t.task, timestamp: t.timestamp }));
+    return JSON.stringify(formattedTasks, null, 2);
 }
 
-function startAutoAddFriend() {
-    saveTask("autoaddfriend").then(() => runSavedTasks());
+// Upload ke GitHub
+async function updateTaskJSONToGitHub() {
+    const apiUrl = `https://api.github.com/repos/${repo}/contents/tasks.json`;
+    const tasksContent = await generateTasksJSON();
+    const contentBase64 = btoa(unescape(encodeURIComponent(tasksContent)));
+
+    let sha = null;
+    const res = await fetch(apiUrl, { headers: { Authorization: `token ${token}` } });
+    if (res.status === 200) {
+        const data = await res.json();
+        sha = data.sha;
+    }
+
+    await fetch(apiUrl, {
+        method: 'PUT',
+        headers: { Authorization: `token ${token}` },
+        body: JSON.stringify({
+            message: "Update tasks.json otomatis",
+            content: contentBase64,
+            sha: sha
+        })
+    });
+
+    console.log("🚀 tasks.json berhasil dikirim ke GitHub!");
 }
 
-function startAutoConfirm() {
-    saveTask("autoconfirm").then(() => runSavedTasks());
+// ====== JALANKAN TASK OTOMATIS ======
+
+async function runSavedTasks() {
+    let tasks = await getTasks();
+    if (tasks.length === 0) return alert("Tidak ada task yang disimpan!");
+    tasks.forEach((task) => console.log(`🚀 Menjalankan task: ${task.task}`));
+    alert("Semua task telah dijalankan otomatis!");
 }
 
-function startLinkPost() {
-    saveTask("autoaddfriend_link_post").then(() => runSavedTasks());
-}
+// ====== START FUNCTION PER TASK ======
 
-function startAutoPost() {
-    saveTask("autoposting_group").then(() => runSavedTasks());
-}
+function startAutoLike() { saveTask("autolike").then(runSavedTasks); }
+function startAutoUnfriend() { saveTask("autounfriend").then(runSavedTasks); }
+function startAutoAddFriend() { saveTask("autoaddfriend").then(runSavedTasks); }
+function startAutoConfirm() { saveTask("autoconfirm").then(runSavedTasks); }
+function startLinkPost() { saveTask("autoaddfriend_link_post").then(runSavedTasks); }
+function startAutoPost() { saveTask("autoposting_group").then(runSavedTasks); }
+function startScrapeGroups() { saveTask("scrape_groups").then(runSavedTasks); }
+function startMarketplacePost() { saveTask("autoposting_marketplace").then(runSavedTasks); }
 
-function startScrapeGroups() {
-    saveTask("scrape_groups").then(() => runSavedTasks());
-}
+// ====== TASK WAJIB HARIAN ======
 
-function startMarketplacePost() {
-    saveTask("autoposting_marketplace").then(() => runSavedTasks());
-}
-
-// 🔹 Simpan Task Default
-saveTask("autolike"); 
-saveTask("autoposting_group"); 
-saveTask("autoposting_marketplace"); 
-saveTask("scrape_groups"); 
+saveTask("autolike");
+saveTask("autoposting_group");
+saveTask("autoposting_marketplace");
+saveTask("scrape_groups");
 saveTask("autojoin_group");
 
-// 🔹 Simpan Task Prioritas (Hanya Satu Bisa Berjalan)
-saveTask("autoaddfriend"); 
-saveTask("autounfriend"); 
-saveTask("autoconfirm"); 
+// ====== TASK PRIORITAS ======
+
+saveTask("autoaddfriend");
+saveTask("autounfriend");
+saveTask("autoconfirm");
 saveTask("autoaddfriend_link_post");
+
+// ====== UPLOAD FILE (EXCEL & GAMBAR) ======
+
+async function simpanFileKeIndexedDB(nama, file) {
+    const db = await openDB();
+    const store = db.transaction('tasks', 'readwrite').objectStore('tasks');
+    await store.put({ id: new Date().getTime(), task: nama, file, timestamp: new Date().toISOString() });
+}
+
+async function simpanGambarMarketplace(files) {
+    const db = await openDB();
+    const store = db.transaction('tasks', 'readwrite').objectStore('tasks');
+    for (const file of files) {
+        await store.put({ id: new Date().getTime(), task: 'gambar_marketplace', file, filename: file.name, timestamp: new Date().toISOString() });
+    }
+}
+
+async function handleUpload() {
+    const fileExcelMarketplace = document.querySelector('#excel-marketplace').files[0];
+    const fileExcelScrapeGroup = document.querySelector('#excel-scrape-group').files[0];
+    const fileExcelJoinGroup = document.querySelector('#excel-join-group').files[0];
+    const gambarMarketplace = document.querySelector('#gambar-marketplace').files;
+
+    if (fileExcelMarketplace) await simpanFileKeIndexedDB('marketplace_excel', fileExcelMarketplace);
+    if (fileExcelScrapeGroup) await simpanFileKeIndexedDB('scrape_group_excel', fileExcelScrapeGroup);
+    if (fileExcelJoinGroup) await simpanFileKeIndexedDB('join_group_excel', fileExcelJoinGroup);
+    if (gambarMarketplace.length) await simpanGambarMarketplace(gambarMarketplace);
+
+    alert('Data berhasil disimpan & dikirim ke bot!');
+    await updateTaskJSONToGitHub();
+}
+
+// ====== SAAT HALAMAN DIMUAT ======
+
+document.addEventListener("DOMContentLoaded", () => {
+    loadAccounts();
+    loadSelectedHours();
+    document.querySelectorAll("#postingHours input, #marketplacePostingHours input").forEach((input) => input.addEventListener("change", saveSelectedHours));
+    document.getElementById("runTasksButton").addEventListener("click", runSavedTasks);
+});
