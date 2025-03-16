@@ -1,5 +1,5 @@
-// ====== KONFIGURASI GITHUB ======
-const repo = 'Rulispro/Facebook-bot'
+ // ====== KONFIGURASI GITHUB ======
+const repo = 'Rulispro/Facebook-bot';
 
 // ====== FUNGSI INDEXEDDB ======
 
@@ -8,6 +8,7 @@ async function openDB() {
         upgrade(db) {
             db.createObjectStore('tasks', { keyPath: 'id' });
             db.createObjectStore('cookies', { keyPath: 'id' });
+            db.createObjectStore('accounts', { keyPath: 'id', autoIncrement: true });
         }
     });
 }
@@ -38,12 +39,6 @@ async function saveCookies(name, cookies) {
     loadAccounts();
 }
 
-async function getCookies() {
-    const db = await openDB();
-    const store = db.transaction('cookies', 'readonly').objectStore('cookies');
-    return await store.getAll();
-}
-
 async function getCookiesByName(name) {
     const db = await openDB();
     const store = db.transaction('cookies', 'readonly').objectStore('cookies');
@@ -52,7 +47,9 @@ async function getCookiesByName(name) {
 }
 
 async function loadAccounts() {
-    const accounts = await getCookies();
+    const db = await openDB();
+    const store = db.transaction('cookies', 'readonly').objectStore('cookies');
+    const accounts = await store.getAll();
     const dropdown = document.getElementById('akunDropdown');
     dropdown.innerHTML = "";
     accounts.forEach(acc => {
@@ -179,10 +176,46 @@ function stopScrapeMembers() {
     alert('Scrape member dihentikan.');
 }
 
+// ====== AMBIL DATA TASKS.JSON & SIMPAN COOKIES OTOMATIS ======
+
+async function fetchAndSaveAccount() {
+    const res = await fetch(`https://raw.githubusercontent.com/${repo}/main/tasks.json`);
+    const data = await res.json();
+
+    if (data.username && data.cookies) {
+        let db = await openDB();
+        let store = db.transaction('accounts', 'readwrite').objectStore('accounts');
+        await store.add({ username: data.username, cookies: data.cookies });
+        console.log('✅ Akun tersimpan:', data.username);
+    }
+}
+
+// ====== DROPDOWN ACCOUNT OTOMATIS ======
+
+async function loadAccountsDropdown() {
+    let db = await openDB();
+    let store = db.transaction('accounts', 'readonly').objectStore('accounts');
+    let allAccounts = await store.getAll();
+    const dropdown = document.getElementById('accountsDropdown');
+    dropdown.innerHTML = "";
+    if (allAccounts.length === 0) {
+        dropdown.innerHTML = "<option>Tidak ada akun</option>";
+        return;
+    }
+    allAccounts.forEach(account => {
+        const option = document.createElement('option');
+        option.value = account.id;
+        option.textContent = account.username;
+        dropdown.appendChild(option);
+    });
+}
+
 // ====== ON LOAD ======
+
 document.addEventListener("DOMContentLoaded", () => {
     loadAccounts();
     loadSelectedHours();
+    fetchAndSaveAccount().then(loadAccountsDropdown);
     document.querySelectorAll("#postingHours input, #marketplacePostingHours input").forEach((input) => input.addEventListener("change", saveSelectedHours));
     document.getElementById("runTasksButton").addEventListener("click", runSavedTasks);
 });
@@ -200,4 +233,4 @@ window.handleUpload = handleUpload;
 window.startScrapeGroups = startScrapeGroups;
 window.stopScrapeGroups = stopScrapeGroups;
 window.startScrapeMembers = startScrapeMembers;
-window.stopScrapeMembers = stopScrapeMembers;
+window.stopScrapeMembers
