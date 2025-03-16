@@ -1,38 +1,78 @@
-const fs = require("fs");
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+const fs = require('fs');
+const path = require('path');
 
-module.exports = async function (page, category, postData, imageBase64) {
-    console.log(`🔹 Posting ke Marketplace di kategori: ${category}...`);
+puppeteer.use(StealthPlugin());
 
-    let categoryURL = {
-        "create/item": "https://www.facebook.com/marketplace/create",
-        "create/vehicle": "https://www.facebook.com/marketplace/create/vehicle",
-        "create/housing-for-rent": "https://www.facebook.com/marketplace/create/housing-for-rent"
-    };
+const tasks = JSON.parse(fs.readFileSync('./tasks.json', 'utf8'));
+const cookies = JSON.parse(fs.readFileSync('./cookies.json', 'utf8'));
 
-    await page.goto(categoryURL[category]);
-    await page.waitForTimeout(5000);
-
-    await page.type("input[name='title']", postData.title);
-    await page.type("input[name='price']", postData.price);
-    await page.type("input[name='location']", postData.location);
-    await page.type("textarea[name='description']", postData.description);
-
-    // Simpan gambar Base64 jadi file sementara
-    let imagePath = "temp_image.jpg";
-    let imageData = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-    fs.writeFileSync(imagePath, imageData, { encoding: "base64" });
-
-    let fileInput = await page.$("input[type='file']");
-    if (fileInput) {
-        await fileInput.uploadFile(imagePath);
-        await page.waitForTimeout(3000);
-    }
-
-    let publishButton = await page.$x("//span[contains(text(), 'Terbitkan')]/ancestor::div[contains(@role, 'button')]");
-    if (publishButton.length > 0) {
-        await publishButton[0].click();
-        console.log("✅ Posting berhasil.");
-    }
-
-    await page.waitForTimeout(5000);
+const linkKategori = {
+    item: 'https://m.facebook.com/marketplace/create/item',
+    vehicle: 'https://m.facebook.com/marketplace/create/vehicle',
+    housing: 'https://m.facebook.com/marketplace/create/rental'
 };
+
+(async () => {
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+
+    const page = await browser.newPage();
+    await page.setViewport({ width: 390, height: 844 });
+
+    for (const cookie of cookies) {
+        await page.setCookie(...cookie.cookies);
+        await page.goto('https://m.facebook.com/', { waitUntil: 'networkidle0' });
+
+        const marketplaceTasks = tasks.filter(t => t.task === 'marketplace');
+        for (const task of marketplaceTasks) {
+            const intervalMs = (task.interval || 3600) * 1000;
+            const link = linkKategori[task.kategori];
+
+            console.log(`Posting ke kategori: ${task.kategori} | Link: ${link}`);
+            for (const data of task.excelData) { // Loop setiap baris Excel
+                try {
+                    await page.goto(link, { waitUntil: 'networkidle0' });
+                    await page.waitForTimeout(5000);
+
+                    // Isi caption (ambil dari kolom Excel)
+                    const caption = data.caption || "Tanpa caption";
+                    await page.waitForSelector('div[role="textbox"][contenteditable="true"]', { visible: true });
+                    await page.click('div[role="textbox"][contenteditable="true"]');
+                    await page.keyboard.type(caption, { delay: 50 });
+                    console.log('📝 Caption:', caption);
+
+                    // Upload foto
+                    const inputFile = await page.$('input[type="file"]');
+                    if (inputFile) {
+                        const absolutePhotos = task.photos.map(photo => path.resolve(__dirname, '..', photo));
+                        await inputFile.uploadFile(...absolutePhotos);
+                        console.log('📷 Foto terupload:', absolutePhotos);
+                    }
+
+                    await page.waitForTimeout(7000); // Tunggu upload foto
+
+                    // Klik tombol 'Terbitkan'
+                    const publishBtn = await page.$x("//span[contains(text(),'Terbitkan') or contains(text(),'Publish')]");
+                    if (publishBtn.length > 0) {
+                        await publishBtn[0].click();
+                        console.log('🚀 Berhasil diterbitkan!');
+                    } else {
+                        console.log('❌ Tombol Terbitkan tidak ditemukan!');
+                    }
+
+                    console.log(`✅ Tunggu ${intervalMs / 1000} detik sebelum posting berikutnya...`);
+                    await page.waitForTimeout(intervalMs);
+                } catch (err) {
+                    console.error(`❌ Error saat posting Marketplace:`, err.message);
+                }
+            }
+        }
+    }
+
+    await browser.close();
+    console.log('✅ Semua tugas Marketplace selesai!');
+})();
