@@ -1,6 +1,5 @@
 // ====== KONFIGURASI GITHUB ======
-const repo = 'username/repo'; // Ganti dengan repo kamu
-const token = 'ghp_xxx'; // Ganti dengan token GitHub kamu
+const repo = 'Rulispro/Facebook-bot'
 
 // ====== FUNGSI INDEXEDDB ======
 
