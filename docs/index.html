@@ -87,16 +87,16 @@
 
     
     <h3>Scrape Nama Grup</h3>
-    <input type="text" id="scrapeGroupName" placeholder="Masukkan nama grup">
+    <input type="text" id="excel-scrape-group" placeholder="Masukkan nama grup">
     <input type="text" id="Excel" placeholder="Masukkan link Excel">
     <button onclick="startScrapeGroups()">Start</button>
 
     <h3>Autojoin Grup</h3>
-    <input type="file" id="groupExcel">
+    <input type="file" id="excel-join-group">
     <button onclick="startAutoJoin()">Start</button>
 
     <h3>Facebook Marketplace</h3>
-    <input type="file" id="marketplacePhoto" placeholder="masukkan foto/video">
+    <input type="file" id="gambar-marketplace" multyple  placeholder="masukkan foto/video">
     <input type="file" id="marketplaceExcel" placeholder="masukkan link excel">
     <select id="marketplaceCategory">
         <option value="create/item">Barang</option>
@@ -119,8 +119,10 @@
     <button onclick="startMarketplacePost()">Start</button
     <button onclick="saveSelectedHours()">Simpan Jam Posting</button>
     <button onclick="saveMarketplacePhoto()">Ambil Gambar</button>
+    
+    <button id="runTasksButton">Jalankan Semua Task</button>
 
-
+   
     <script>
         // Tambah input grup baru otomatis
         function addGroupLink() {
@@ -131,9 +133,12 @@
             input.placeholder = "Masukkan link grup Facebook";
             container.appendChild(input);
         }
+    document.getElementById("runTasksButton").addEventListener("click", runSavedTasks);
 
     </script>
 
+<script src="https://unpkg.com/idb@7/build/iife/index-min.js"></script>
+    
     <script src="script.js"></script>
 </body>
 </html>
