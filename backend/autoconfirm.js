@@ -1,81 +1,61 @@
-// 🔹 Simpan akun login ke IndexedDB
-async function saveCookies() {
-    let cookieString = document.getElementById("cookieInput").value;
-    if (!cookieString) {
-        alert("Masukkan cookies terlebih dahulu!");
-        return;
-    }
+const puppeteer = require('puppeteer');
+const fs = require('fs');
 
-    let cookies = cookieString.split("; ").map((c) => {
-        let [name, value] = c.split("=");
-        return { name, value, domain: ".facebook.com" };
+(async () => {
+    let taskFile = 'backend/tasks.json';
+    if (!fs.existsSync(taskFile)) return console.log('⚠️ Tidak ada task ditemukan.');
+
+    let tasks = JSON.parse(fs.readFileSync(taskFile, 'utf8'));
+    let confirmTask = tasks.find(t => t.task === 'autoconfirm');
+    if (!confirmTask) return console.log('❌ Tidak ada task autoconfirm ditemukan.');
+
+    let cookiesFile = 'backend/cookies.json';
+    if (!fs.existsSync(cookiesFile)) return console.log('❌ Cookies tidak ditemukan!');
+    let cookies = JSON.parse(fs.readFileSync(cookiesFile, 'utf8'));
+
+    let browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        defaultViewport: { width: 360, height: 720 } // Mobile view
     });
 
-    let accountName = prompt("Masukkan nama akun:");
+    let page = await browser.newPage();
+    await page.setCookie(...cookies);
+    await page.goto('https://m.facebook.com/friends/center/requests/', { waitUntil: 'networkidle2' });
 
-    let request = indexedDB.open("FacebookBotDB", 1);
-    request.onsuccess = function () {
-        let db = request.result;
-        let transaction = db.transaction("accounts", "readwrite");
-        let store = transaction.objectStore("accounts");
+    console.log('✅ Login berhasil, mulai konfirmasi pertemanan...');
 
-        store.put({ name: accountName, cookies });
+    const maxConfirm = 50; // Bisa diset via HTML lalu tasks.json
+    let confirmCount = 0;
 
-        alert(`✅ Akun ${accountName} tersimpan!`);
-        loadAccounts();
-    };
-}
+    while (confirmCount < maxConfirm) {
+        await page.waitForTimeout(Math.floor(Math.random() * (10000 - 5000 + 1)) + 5000); // 5-10 detik acak
 
-// 🔹 Muat akun yang tersimpan ke dropdown
-async function loadAccounts() {
-    let request = indexedDB.open("FacebookBotDB", 1);
-    request.onsuccess = function () {
-        let db = request.result;
-        let transaction = db.transaction("accounts", "readonly");
-        let store = transaction.objectStore("accounts");
-        let getAllRequest = store.getAll();
+        const confirmButtons = await page.$$('a[role="button"][aria-label="Konfirmasi"]');
+        console.log(`🔍 Ditemukan ${confirmButtons.length} permintaan pertemanan`);
 
-        getAllRequest.onsuccess = function () {
-            let accounts = getAllRequest.result;
-            let dropdown = document.getElementById("accountDropdown");
-            dropdown.innerHTML = "";
+        if (confirmButtons.length === 0) {
+            console.log('✅ Semua permintaan sudah dikonfirmasi atau tidak ada.');
+            break;
+        }
 
-            accounts.forEach((account) => {
-                let option = document.createElement("option");
-                option.value = account.name;
-                option.textContent = account.name;
-                dropdown.appendChild(option);
-            });
-        };
-    };
-}
+        for (const btn of confirmButtons) {
+            if (confirmCount >= maxConfirm) break;
 
-// 🔹 Simpan Auto Confirm Friend ke IndexedDB
-async function saveAutoConfirmFriend() {
-    let minInterval = parseInt(document.getElementById("minIntervalConfirm").value, 10);
-    let maxInterval = parseInt(document.getElementById("maxIntervalConfirm").value, 10);
-    let maxConfirm = 50;
+            await btn.click();
+            confirmCount++;
+            console.log(`🤝 Konfirmasi ke-${confirmCount}`);
+            await page.waitForTimeout(2000); // Delay antar klik
+        }
 
-    if (isNaN(minInterval) || isNaN(maxInterval)) {
-        alert("Isi semua data dengan benar!");
-        return;
+        // Scroll untuk muncul permintaan baru
+        await page.evaluate(() => window.scrollBy(0, window.innerHeight));
     }
 
-    let request = indexedDB.open("FacebookBotDB", 1);
-    request.onsuccess = function () {
-        let db = request.result;
-        let transaction = db.transaction("settings", "readwrite");
-        let store = transaction.objectStore("settings");
+    console.log(`✅ Autoconfirm selesai. Total dikonfirmasi: ${confirmCount}`);
+    await browser.close();
 
-        store.put({ id: "autoConfirmFriend", maxConfirm, minInterval, maxInterval });
-
-        alert("✅ Data Auto Confirm Friend disimpan!");
-    };
-}
-
-// 🔹 Jalankan Auto Confirm Friend
-function startAutoConfirmFriend() {
-    alert("🚀 Auto Confirm Friend dimulai. Silakan jalankan bot di server!");
-}
-
-window.onload = loadAccounts;
+    // Hapus task setelah selesai
+    let remainingTasks = tasks.filter(t => t.task !== 'autoconfirm');
+    fs.writeFileSync(taskFile, JSON.stringify(remainingTasks, null, 2), 'utf8');
+})();
