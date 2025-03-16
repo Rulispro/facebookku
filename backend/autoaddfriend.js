@@ -1,87 +1,63 @@
-const puppeteer = require("puppeteer");
+const puppeteer = require('puppeteer');
+const fs = require('fs');
 
-module.exports = async function autoAddFriend() {
-    console.log("🚀 Memulai Auto Add Friend untuk semua akun...");
+module.exports = async (task) => {
+    console.log("🚀 Memulai Auto Add Friend & Follow...");
 
-    const browser = await puppeteer.launch({ headless: false });
-    const page = await browser.newPage();
+    const { cookies, max, interval, target } = task;
 
-    // 🔹 Ambil semua akun dari IndexedDB
-    let accounts = await page.evaluate(async () => {
-        return new Promise((resolve) => {
-            let request = indexedDB.open("FacebookBotDB", 1);
-            request.onsuccess = function () {
-                let db = request.result;
-                let transaction = db.transaction("accounts", "readonly");
-                let store = transaction.objectStore("accounts");
-                let getAllRequest = store.getAll();
-
-                getAllRequest.onsuccess = function () {
-                    resolve(getAllRequest.result);
-                };
-            };
-        });
+    const browser = await puppeteer.launch({
+        headless: true, // false jika mau lihat prosesnya
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
-    if (!accounts || accounts.length === 0) {
-        console.log("❌ Tidak ada akun yang tersimpan!");
-        await browser.close();
-        return;
-    }
+    const page = await browser.newPage();
 
-    for (let account of accounts) {
-        let { name, cookies } = account;
-        console.log(`🔹 Login ke akun: ${name}`);
+    // Set cookies login
+    await page.setCookie(...cookies);
 
-        await page.setCookie(...cookies);
-        await page.goto("https://www.facebook.com/", { waitUntil: "networkidle2" });
-        await page.waitForTimeout(3000);
+    // Akses halaman target (followers, following, friends)
+    await page.goto(`https://www.facebook.com/${target}`, { waitUntil: 'networkidle2' });
+    await page.waitForTimeout(5000); // Tunggu halaman siap
 
-        // 🔹 Ambil data auto add friend dari IndexedDB
-        let friendData = await page.evaluate(async () => {
-            return new Promise((resolve) => {
-                let request = indexedDB.open("FacebookBotDB", 1);
-                request.onsuccess = function () {
-                    let db = request.result;
-                    let transaction = db.transaction("settings", "readonly");
-                    let store = transaction.objectStore("settings");
-                    let getRequest = store.get("autoAddFriend");
+    let totalAction = 0;
+    let scrollTimes = 0;
 
-                    getRequest.onsuccess = function () {
-                        resolve(getRequest.result);
-                    };
-                };
-            });
-        });
+    while (totalAction < max && scrollTimes < 20) { // Limit scroll 20x untuk keamanan
+        console.log(`🔍 Scroll ke-${scrollTimes + 1}`);
+        await page.evaluate(() => window.scrollBy(0, window.innerHeight));
+        await page.waitForTimeout(3000); // Tunggu orang baru termuat
 
-        if (!friendData) {
-            console.log("❌ Data Auto Add Friend tidak tersedia.");
-            continue;
+        // Ambil semua tombol "Tambah Teman" dan "Ikuti"
+        const addFriendButtons = await page.$$(`div[aria-label="Tambah Teman"]`);
+        const followButtons = await page.$$(`div[aria-label="Ikuti"]`);
+
+        console.log(`👥 Ditemukan ${addFriendButtons.length} tombol Tambah Teman`);
+        console.log(`👥 Ditemukan ${followButtons.length} tombol Ikuti`);
+
+        // Gabungkan semua tombol
+        const allButtons = [...addFriendButtons, ...followButtons];
+
+        for (const button of allButtons) {
+            if (totalAction >= max) break;
+
+            try {
+                await button.click();
+                totalAction++;
+                console.log(`✅ Berhasil action ke-${totalAction}`);
+                await page.waitForTimeout(interval * 1000); // jeda antar klik
+            } catch (err) {
+                console.error('❌ Gagal klik tombol:', err);
+            }
         }
 
-        let { targetUsername, source, maxAdd, minInterval, maxInterval } = friendData;
-        console.log(`🎯 Target: ${targetUsername}, Sumber: ${source}, Maksimal: ${maxAdd} teman`);
-
-        let targetURL = `https://www.facebook.com/${targetUsername}/${source}`;
-        await page.goto(targetURL, { waitUntil: "networkidle2" });
-        await page.waitForTimeout(3000);
-
-        let addButtons = await page.$x("//span[contains(text(), 'Tambah Teman')]/ancestor::div[contains(@role, 'button')]");
-
-        let count = 0;
-        for (let button of addButtons) {
-            if (count >= maxAdd) break;
-
-            await button.click();
-            console.log(`✅ ${name} menambahkan ${count + 1} teman.`);
-            count++;
-
-            let interval = Math.floor(Math.random() * (maxInterval - minInterval + 1)) + minInterval;
-            await page.waitForTimeout(interval * 1000);
-        }
-
-        console.log(`🎉 ${name} selesai! Berhasil menambahkan ${count} teman.`);
+        scrollTimes++;
     }
 
+    console.log(`🎉 Selesai. Total berhasil add friend/follow: ${totalAction}`);
     await browser.close();
+
+    // Kosongkan tasks.json setelah selesai
+    fs.writeFileSync('backend/tasks.json', '[]', 'utf8');
+    console.log("🗑️ Task dihapus dari tasks.json");
 };
