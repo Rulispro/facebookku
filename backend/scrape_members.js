@@ -26,15 +26,15 @@ const tasks = require('./tasks.json');
         await page.waitForTimeout(3000);
     }
 
-    // Ambil nama dan link profil member
+    // Ambil nama dan link profil member, LIMIT MAKSIMAL 100
     const members = await page.$$eval('a[href*="facebook.com/profile.php"], a[href*="facebook.com/people/"]', links => 
         Array.from(new Set(links.map(link => ({
             name: link.innerText,
             profile: link.href.split('?')[0]
-        }))))
+        })))).slice(0, 100) // Ambil hanya 100 akun pertama
     );
 
-    console.log(`Berhasil scrape ${members.length} member`);
+    console.log(`Berhasil scrape ${members.length} member (maksimal 100)`);
 
     // Buat file Excel
     const wb = xlsx.utils.book_new();
