@@ -1,0 +1,77 @@
+const puppeteer = require('puppeteer');
+const fetch = require('node-fetch');
+const fs = require('fs');
+
+const repoBackend = 'Rulispro/my-repo'; // Nama repository yang ingin di-update
+const filePath = 'backend/cookies.json'; // Path file yang akan diupdate di repo
+const token = process.env.GITHUB_TOKEN; // Token GitHub disimpan di environment variable
+
+// Fungsi untuk mengupdate cookies di GitHub
+async function updateCookiesInGitHub(cookiesArray) {
+    let sha = '';
+    // Ambil SHA file cookies.json jika sudah ada di repository
+    const getFile = await fetch(`https://api.github.com/repos/${repoBackend}/contents/${filePath}`, {
+        headers: { 'Authorization': `token ${token}` }
+    });
+    
+    if (getFile.ok) {
+        const fileData = await getFile.json();
+        sha = fileData.sha;  // Ambil SHA file jika sudah ada
+    }
+
+    // Commit cookies.json ke repo backend
+    const response = await fetch(`https://api.github.com/repos/${repoBackend}/contents/${filePath}`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `token ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            message: 'Update cookies.json with Puppeteer',  // Pesan commit
+            content: Buffer.from(JSON.stringify({ cookies: cookiesArray })).toString('base64'), // Encoding file ke base64
+            sha: sha // SHA file untuk update (kosongkan jika file baru)
+        })
+    });
+
+    if (response.ok) {
+        console.log('✅ Cookies berhasil diperbarui di GitHub!');
+    } else {
+        console.error('❌ Gagal memperbarui cookies ke GitHub');
+    }
+}
+
+// Fungsi untuk mengumpulkan cookies dari website menggunakan Puppeteer
+async function getCookiesFromWebsite(url) {
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    await page.goto(url, { waitUntil: 'networkidle0' });
+
+    // Ambil cookies dari halaman
+    const cookies = await page.cookies();
+    await browser.close();
+
+    return cookies.map(cookie => ({
+        name: cookie.name,
+        value: cookie.value,
+        domain: cookie.domain,
+        path: cookie.path,
+        httpOnly: cookie.httpOnly,
+        secure: cookie.secure
+    }));
+}
+
+// Main function untuk menjalankan proses
+async function main() {
+    const websiteUrl = 'https://example.com'; // URL yang ingin kamu ambil cookies-nya
+    
+    try {
+        const cookies = await getCookiesFromWebsite(websiteUrl);
+        console.log('Cookies yang diambil:', cookies);
+        await updateCookiesInGitHub(cookies);
+    } catch (error) {
+        console.error('Terjadi kesalahan:', error);
+    }
+}
+
+// Jalankan main function
+main();
