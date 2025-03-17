@@ -47,7 +47,7 @@ async function loadAccounts() {
     const db = await openDB();
     const store = db.transaction('cookies', 'readonly').objectStore('cookies');
     const accounts = await store.getAll();
-    const dropdown = document.getElementById('akunDropdown');
+    const dropdown = document.getElementById('accountDropdown');
     dropdown.innerHTML = "";
     accounts.forEach(acc => {
         const option = document.createElement('option');
@@ -214,4 +214,9 @@ document.addEventListener("DOMContentLoaded", () => {
     loadSelectedHours();
     fetchAndSaveAccount().then(loadAccounts);
     document.querySelectorAll("#postingHours input, #marketplacePostingHours input").forEach((input) => input.addEventListener("change", saveSelectedHours));
+});
+
+// Panggil fungsi untuk load akun ke dropdown saat halaman dibuka
+document.addEventListener('DOMContentLoaded', function () {
+  loadAccounts();
 });
