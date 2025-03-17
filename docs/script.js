@@ -1,6 +1,5 @@
  // ====== KONFIGURASI GITHUB ======
-      // ====== KONFIGURASI GITHUB ======
-const repo = 'Rulispro/Facebook-bot';
+      const repo = 'Rulispro/Facebook-bot';
 
 // ====== FUNGSI INDEXEDDB ======
 async function openDB() {
@@ -173,20 +172,27 @@ function convertCookieStringToArray(cookieString) {
     });
 }
 
-function saveCookiesManual() {
-    const cookieString = document.getElementById('cookieInput').value;
-    const cookiesArray = convertCookieStringToArray(cookieString);
-    const dbRequest = indexedDB.open('facebookBotDB', 1);
-    dbRequest.onsuccess = function(e) {
-        const db = e.target.result;
-        const tx = db.transaction('cookies', 'readwrite');
-        const store = tx.objectStore('cookies');
-        store.add({ id: new Date().getTime(), cookies: cookiesArray });
-        tx.oncomplete = () => alert('Cookies tersimpan!');
-    };
+// ====== SIMPAN COOKIES DAN AMBIL USERNAME OTOMATIS ======
+async function saveCookiesHandler() {
+    const cookies = document.getElementById('cookieInput').value.trim();
+    if (!cookies) return alert('Cookies tidak boleh kosong!');
+    // Kirim cookies ke backend untuk login dan ambil username
+    const response = await fetch('/save-cookies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cookies: convertCookieStringToArray(cookies) })
+    });
+    const result = await response.json();
+    if (result.success) {
+        await saveCookies(result.username, result.cookies); // Simpan cookies pakai nama akun otomatis
+        alert(`Cookies berhasil disimpan untuk akun: ${result.username}`);
+        loadAccounts(); // Update dropdown
+    } else {
+        alert('Gagal menyimpan cookies atau login!');
+    }
 }
 
-// ====== AMBIL DATA TASKS.JSON & SIMPAN COOKIES OTOMATIS ======
+// ====== AMBIL DATA tasks.json DAN SIMPAN ======
 async function fetchAndSaveAccount() {
     const res = await fetch(`https://raw.githubusercontent.com/${repo}/main/tasks.json`);
     const data = await res.json();
@@ -197,13 +203,15 @@ async function fetchAndSaveAccount() {
     }
 }
 
-// ====== ON LOAD ======
+// ====== ONLOAD ======
+window.onload = function() {
+    loadAccounts();
+    loadSelectedHours();
+};
+
 document.addEventListener("DOMContentLoaded", () => {
     loadAccounts();
     loadSelectedHours();
     fetchAndSaveAccount().then(loadAccounts);
     document.querySelectorAll("#postingHours input, #marketplacePostingHours input").forEach((input) => input.addEventListener("change", saveSelectedHours));
 });
-
-// ====== EXPORT ======
-window = { startTask, handleUpload, startScrapeGroups, stopScrapeGroups, startScrapeMembers, stopScrapeMembers, saveCookiesManual };
