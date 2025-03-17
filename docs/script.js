@@ -1,7 +1,4 @@
- // ====== KONFIGURASI GITHUB ======
-      const repo = 'Rulispro/Facebook-bot';
-
-// ====== FUNGSI INDEXEDDB ======
+ // ====== DATABASE ======
 async function openDB() {
     return await idb.openDB('facebookBotDB', 1, {
         upgrade(db) {
@@ -77,7 +74,7 @@ function loadSelectedHours() {
     document.querySelectorAll('#marketplacePostingHours input').forEach((input) => input.checked = marketplaceHours.includes(input.value));
 }
 
-// ====== RUN TASK OTOMATIS (SIMULASI) ======
+// ====== RUN TASK OTOMATIS ======
 async function runSavedTasks() {
     let tasks = await getTasks();
     if (tasks.length === 0) return alert("Tidak ada task yang disimpan!");
@@ -164,7 +161,7 @@ function stopScrapeMembers() {
     alert('Scrape member dihentikan.');
 }
 
-// ====== KONVERSI DAN SIMPAN COOKIE MANUAL ======
+// ====== KONVERSI DAN SIMPAN COOKIE ======
 function convertCookieStringToArray(cookieString) {
     return cookieString.split(';').map(cookie => {
         const [name, ...rest] = cookie.trim().split('=');
@@ -172,11 +169,9 @@ function convertCookieStringToArray(cookieString) {
     });
 }
 
-// ====== SIMPAN COOKIES DAN AMBIL USERNAME OTOMATIS ======
 async function saveCookiesHandler() {
     const cookies = document.getElementById('cookieInput').value.trim();
     if (!cookies) return alert('Cookies tidak boleh kosong!');
-    // Kirim cookies ke backend untuk login dan ambil username
     const response = await fetch('/save-cookies', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -184,23 +179,26 @@ async function saveCookiesHandler() {
     });
     const result = await response.json();
     if (result.success) {
-        await saveCookies(result.username, result.cookies); // Simpan cookies pakai nama akun otomatis
+        await saveCookies(result.username, result.cookies);
         alert(`Cookies berhasil disimpan untuk akun: ${result.username}`);
-        loadAccounts(); // Update dropdown
+        loadAccounts();
     } else {
         alert('Gagal menyimpan cookies atau login!');
     }
 }
 
-// ====== AMBIL DATA tasks.json DAN SIMPAN ======
-async function fetchAndSaveAccount() {
-    const res = await fetch(`https://raw.githubusercontent.com/${repo}/main/tasks.json`);
-    const data = await res.json();
-    if (data.username && data.cookies) {
-        let db = await openDB();
-        let store = db.transaction('accounts', 'readwrite').objectStore('accounts');
-        await store.add({ username: data.username, cookies: data.cookies });
-    }
+// ====== FUNGSI KIRIM COOKIES KE BACKEND ======
+async function saveCookiesToBackend() {
+    const cookiesInput = document.getElementById('cookieInput').value.trim();
+    if (!cookiesInput) return alert('Cookies tidak boleh kosong!');
+    const cookiesArray = convertCookieStringToArray(cookiesInput);
+    const response = await fetch('/save-cookies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cookies: cookiesArray })
+    });
+    const result = await response.json();
+    alert(result.success ? '✅ Cookies berhasil dikirim ke backend!' : '❌ Gagal simpan cookies ke backend!');
 }
 
 // ====== ONLOAD ======
@@ -208,15 +206,3 @@ window.onload = function() {
     loadAccounts();
     loadSelectedHours();
 };
-
-document.addEventListener("DOMContentLoaded", () => {
-    loadAccounts();
-    loadSelectedHours();
-    fetchAndSaveAccount().then(loadAccounts);
-    document.querySelectorAll("#postingHours input, #marketplacePostingHours input").forEach((input) => input.addEventListener("change", saveSelectedHours));
-});
-
-// Panggil fungsi untuk load akun ke dropdown saat halaman dibuka
-document.addEventListener('DOMContentLoaded', function () {
-  loadAccounts();
-});
