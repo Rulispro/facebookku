@@ -26,7 +26,7 @@ jobs:
         run: npm install --legacy-peer-deps
 
       - name: Run Group Bot
-        run: node dashboard/index.js group
+        run: node dasboard/index.js group
         env:
           PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: true
 
@@ -36,10 +36,10 @@ jobs:
           name: recordings
           path: recording_*.mp4
 
-      - name: Commit dashboard update
+      - name: Commit dasboard update
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add dashboard/data.json
+          git add dasboard/data.json
           git commit -m "Update dashboard data" || echo "No changes"
           git push
