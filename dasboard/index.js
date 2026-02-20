@@ -2161,7 +2161,7 @@ function readTemplate(file) {
 
 //--FUNGSI RUN ACCOUNT--//
 
-async function runAccount(page, row,acc.account, today) {
+async function runAccount(page, row,accountName, today) {
  console.log("\n🧪 runAccount row:", row);
   const account = row.account;
   const caption = row.caption;
@@ -3100,7 +3100,7 @@ else if (mode === "group") {
 //  }
 ///$BARU YANG PAKAI DOLAR
   for (const row of rowsForAccount) {
-  await runAccount(page, row, acc.account, today);
+  await runAccount(page, row, accountName, today);
     
   }
 }
