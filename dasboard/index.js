@@ -2161,7 +2161,7 @@ function readTemplate(file) {
 
 //--FUNGSI RUN ACCOUNT--//
 
-async function runAccount(page, row) {
+async function runAccount(page, row,acc.account, today) {
  console.log("\n🧪 runAccount row:", row);
   const account = row.account;
   const caption = row.caption;
@@ -2241,7 +2241,7 @@ const groupInfo = await page.evaluate(() => {
 });
 
 // push dashboard
-dashboardData.push({
+docsData.push({
   account: accountName,
   tanggal: today,
   mode: "group",
@@ -2870,7 +2870,7 @@ accounts.forEach((a, i) => {
     const likeLinkPostRows = templates.likelinkpost || [];
     const likeGroupRows= templates.likeGroup || [];
     //$BARU BUAT TESTING
-    let dashboardData = [];
+    let docsData = [];
     const browser = await puppeteer.launch({
       headless: "new",
       defaultViewport: { width: 390, height: 844, isMobile: true, hasTouch: true },
