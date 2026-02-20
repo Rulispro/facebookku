@@ -1,175 +1,19 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Facebook Bot</title>
-</head>
-<body>
-    <h2>Login Facebook</h2>
-    <input type="text" id="cookieInput" placeholder="Masukkan Cookies">
-    <button onclick="saveCookiesHandler()">Login ke Facebook</button>
+<div id="list"></div>
 
-    <h3>Akun Login</h3>
-    <select id="accountDropdown"></select>
+<script>
+fetch("data.json")
+  .then(res => res.json())
+  .then(data => {
+    const container = document.getElementById("list");
 
-    <h3>Autolike Beranda</h3>
-    <input type="number" id="totalLike" placeholder="Masukkan total like (maks 120)">
-    <select id="reactionType">
-        <option value="like">Like</option>
-        <option value="love">Love</option>
-        <option value="wow">Wow</option>
-        <option value="laugh">Laugh</option>
-        <option value="care">Care</option>
-        <option value="sad">Sad</option>
-        <option value="angry">Angry</option>
-    </select>
-    <input type="number" id="minIntervalLike" placeholder="Masukkan waktu minimal (5 detik)">
-    <input type="number" id="maxIntervalLike" placeholder="Masukkan waktu maksimal (5 menit)">
-    <button onclick="startAutolike()">Start</button>
-    <button onclick="stopAutolike()">Stop</button>
-
-    <h3>Autounfriend</h3>
-    <input type="number" id="minIntervalUnfriend" placeholder="Masukkan waktu minimal (5 detik)">
-    <input type="number" id="maxIntervalUnfriend" placeholder="Masukkan waktu maksimal (2 menit)">
-    <button onclick="startAutoUnfriend()">Start</button>
-    <button onclick="stopAutoUnfriend()">Stop</button>
-
-    <h3>Autoaddfriend</h3>
-    <input type="text" id="targetUsername" placeholder="Masukkan link username akun Facebook">
-    <select id="friendType">
-        <option value="followers">Followers</option>
-        <option value="following">Following</option>
-        <option value="friends">Friends</option>
-    </select>
-    <input type="number" id="minIntervalAddFriend" placeholder="Masukkan waktu minimal (5 detik)">
-    <input type="number" id="maxIntervalAddFriend" placeholder="Masukkan waktu maksimal (3 menit)">
-    <button onclick="startAutoAddFriend()">Start</button>
-    <button onclick="stopAutoAddFriend()">Stop</button>
-    
-    <p>Saat tombol autounfriend start, autoaddfriend, auto confirm, autolinkpost ga jalan</p>
-    
-    <h3>Autoconfirm</h3>
-    <input type="number" id="confirmInterval" placeholder="Masukkan waktu minimal (5 detik)">
-    <button onclick="startAutoConfirm()">Start</button>
-    <button onclick="stopAutoConfirm()">Stop</button>
-
-    <h3>Addfriend Link Post</h3>
-    <input type="text" id="linkPost" placeholder="Masukkan link postingan akun Facebook">
-    <input type="text" id="groupLink" placeholder="Masukkan link grup Facebook">
-    <input type="number" id="linkInterval" placeholder="Masukkan waktu minimal 5 detik">
-    <button onclick="startLinkPost()">Start</button>
-    
-    <h3>Autoposting Grup</h3>
-    <div id="groupLinksContainer">
-        <input type="text" name="groupLink" placeholder="Masukkan link grup Facebook">
-    </div>
-    <button onclick="addGroupLink()">Tambah Link Grup</button>
-    <button onclick="hapusGroupLink()">hapus grup</button>
-    
-    <input type="file" id="groupMedia">
-    <textarea id="groupCaption" placeholder="Masukkan text caption"></textarea>
-    <input type="number" id="postInterval" placeholder="Masukkan waktu minimal 5 detik">
-
-    <h4>Pilih Jam Posting (Maks 3)</h4>
-    <div id="postingHours">
-        <script>
-            for (let i = 4; i <= 24; i++) {
-                let hour = i < 10 ? `0${i}:00` : `${i}:00`;
-                document.write(`<input type="checkbox" name="postingHours" value="${hour}"> ${hour} `);
-                if (i % 6 === 0) document.write("<br>");
-            }
-        </script>
-    </div>
-
-    <button onclick="startAutoPost()">Start</button>
-    <button onclick="stopAutoPost()">Stop</button>
-    <button onclick="saveSelectedHours()">Simpan Jam Posting</button>
-
-    
-    <h3>Scrape Nama Grup</h3>
-    <input type="text" id="excel-scrape-group" placeholder="Masukkan nama grup">
-    <input type="text" id="Excel" placeholder="Masukkan link Excel">
-    <button onclick="startScrapeGroups()">Start</button>
-    <button onclick="stopScrapeGroups()">Stop</button>
-    <p>berjalan hanya saat tombol start diklik </p>
-
-    <h3>Scrape member Grup</h3>
-    <input type="text" id="excel-scrape-group" placeholder="Masukkan nama grup">
-    <input type="text" id="Excel" placeholder="Masukkan link Excel">
-    <button onclick="startMemberGroups()">Start</button>
-    <button onclick="stopMemberGroups()">Stop</button>
-    <p>berjalan saat tombol start diklik </p>
-
-    <h3>Autojoin Grup</h3>
-    
-    <kabel for="link">masukkan link excel</kabel>
-    <input type="file" id="excel-join-group">
-    <button onclick="startAutoJoin()">Start</button>
-    <p>berjalan saat tombol start diklik </p>
-
-    <h3>Facebook Marketplace</h3>
-    <label for="gambar-marketplace" >Masukkan foto</label>
-    <input type="file" id="gambar-marketplace" multyple></br>
-  
-    <label for="marketplace-excel">masukkan link excel</label>
-    <input type="file" id="marketplaceExcel">
-  
-    <select id="marketplaceCategory">
-        <option value="create/item">Barang</option>
-        <option value="create/vehicle">Kendaraan</option>
-        <option value="create/housing for rent">Properti</option>
-    </select>
-
-    <h4>Pilih Jam Posting Marketplace (Maks 7)</h4>
-    <div id="marketplacePostingHours">
-        <script>
-            for (let i = 4; i <= 24; i++) {
-                let hour = i < 10 ? `0${i}:00` : `${i}:00`;
-                document.write(`<input type="checkbox" name="postingHours" value="${hour}"> ${hour} `);
-                if (i % 6 === 0) document.write("<br>");
-            }
-        </script>
-    </div>
-
-    <button onclick="saveToIndexedDB()">simpan Gambar</button>
-    <button onclick="startMarketplacePost()">Start</button
-    <button onclick="saveSelectedHours()">Simpan Jam Posting</button>
-    <button onclick="saveMarketplacePhoto()">Ambil Gambar</button>
-    
-    <button id="runTasksButton">Jalankan Semua Task</button>
-
-   
-    <script>
-        // Tambah input grup baru otomatis
-        
-            function addGroupLink() {
-    let container = document.getElementById("groupLinksContainer");
-    let input = document.createElement("input");
-    input.type = "text";
-    input.name = "groupLink";
-    input.placeholder = "Masukkan link grup Facebook";
-    input.style.display = "block"; // Biar rapih ke bawah
-    input.style.marginTop = "5px";
-    container.appendChild(input);
-}
-
-function hapusGroupLink() {
-    let container = document.getElementById("groupLinksContainer");
-    let inputs = container.getElementsByTagName("input");
-    if (inputs.length > 1) { // Jangan hapus kalau cuma 1 tersisa
-        container.removeChild(inputs[inputs.length - 1]);
-    } else {
-        alert("Minimal 1 link grup harus ada!");
-    }
-}
-
-    document.getElementById("runTasksButton").addEventListener("click", runSavedTasks);
-
-    </script>
-
-<script src="https://unpkg.com/idb@7/build/iife/index-min.js"></script>
-    
-    <script src="script.js"></script>
-</body>
-</html>
+    data.forEach(item => {
+      container.innerHTML += `
+        <div class="card">
+          <img src="${item.group_photo}" class="group-img">
+          <h3>${item.group_name}</h3>
+          <p>${item.caption}</p>
+        </div>
+      `;
+    });
+  });
+</script>
